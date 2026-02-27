@@ -22,7 +22,9 @@ public class WebSecurityConfig {
             "/v3/api-docs",
             "/webjars/**",
             "/login",
-            "/register"
+            "/register",
+            "/ads/**",           // убрать после разработки
+            "/users/**"          // убрать после разработки
     };
 
     @Bean
