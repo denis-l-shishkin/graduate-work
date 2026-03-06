@@ -12,7 +12,9 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Integer>
 
     List<CommentEntity> findByAd(AdEntity ad);
 
-    List<CommentEntity> findByAdId(Integer adId);
+    List<CommentEntity> findByAdPk(Integer adId);
 
     void deleteAllByAd(AdEntity ad);
+
+    long countByAdPk(Integer adId);
 }
