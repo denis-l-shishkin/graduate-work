@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-03-01-04-add-indexes
+      author: dshishkin
+      comment: Оптимизация запросов
+      changes:
+        # Поиск пользователя по email
+        - createIndex:
+            tableName: users
+            indexName: idx_users_email
+            columns:
+              - column:
+                  name: email
+
+        # Поиск объявлений по автору
+        - createIndex:
+            tableName: ads
+            indexName: idx_ads_author
+            columns:
+              - column:
+                  name: author_id
+
+        # Поиск комментариев
+        - createIndex:
+            tableName: comments
+            indexName: idx_comments_ad
+            columns:
+              - column:
+                  name: ad_id
+
+        - createIndex:
+            tableName: comments
+            indexName: idx_comments_author
+            columns:
+              - column:
+                  name: author_id
+
+        # Сортировка комментариев по дате
+        - createIndex:
+            tableName: comments
+            indexName: idx_comments_ad_created
+            columns:
+              - column:
+                  name: ad_id
+              - column:
+                  name: created_at

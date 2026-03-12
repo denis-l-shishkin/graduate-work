@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - include:
+      file: v1.0.0/01-create-users-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: v1.0.0/02-create-ads-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: v1.0.0/03-create-comments-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: v1.0.0/04-add-indexes.yaml
+      relativeToChangelogFile: true
