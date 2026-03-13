@@ -22,10 +22,14 @@ public class UserMapper {
         dto.setPhone(entity.getPhone());
         dto.setRole(entity.getRole());
 
-        // Формируем ссылку на аватар, если он есть
         if (entity.getImagePath() != null && !entity.getImagePath().isEmpty()) {
-            // Ссылка вида /users/5/image для получения аватара конкретного пользователя
-            dto.setImage("/users/" + entity.getId() + "/image");
+            String imagePath = entity.getImagePath();
+            if (imagePath.startsWith("/avatars/")) {
+                dto.setImage(imagePath);
+            } else {
+                String fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
+                dto.setImage("/avatars/" + fileName);
+            }
         }
 
         return dto;

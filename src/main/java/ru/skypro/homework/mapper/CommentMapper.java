@@ -37,7 +37,13 @@ public class CommentMapper {
             dto.setAuthorFirstName(author.getFirstName());
 
             if (author.getImagePath() != null && !author.getImagePath().isEmpty()) {
-                dto.setAuthorImage("/users/" + author.getId() + "/image");
+                String imagePath = author.getImagePath();
+                if (imagePath.startsWith("/avatars/")) {
+                    dto.setAuthorImage(imagePath);
+                } else {
+                    String fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
+                    dto.setAuthorImage("/avatars/" + fileName);
+                }
             }
         }
 
@@ -49,7 +55,7 @@ public class CommentMapper {
 
         if (entities == null || entities.isEmpty()) {
             dto.setCount(0);
-            dto.setResults(List.of());  // пустой список вместо null
+            dto.setResults(List.of());
             return dto;
         }
 

@@ -1,47 +1,64 @@
 package ru.skypro.homework.service.impl;
 
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import ru.skypro.homework.dto.request.Register;
+import ru.skypro.homework.entity.UserEntity;
+import ru.skypro.homework.mapper.UserMapper;
+import ru.skypro.homework.repository.UserRepository;
 import ru.skypro.homework.service.AuthService;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final UserDetailsManager manager;
+    private final UserRepository userRepository;
     private final PasswordEncoder encoder;
-
-    public AuthServiceImpl(UserDetailsManager manager,
-                           PasswordEncoder passwordEncoder) {
-        this.manager = manager;
-        this.encoder = passwordEncoder;
-    }
+    private final UserMapper userMapper;
 
     @Override
     public boolean login(String userName, String password) {
-        if (!manager.userExists(userName)) {
-            return false;
-        }
-        UserDetails userDetails = manager.loadUserByUsername(userName);
-        return encoder.matches(password, userDetails.getPassword());
+        log.info("Попытка входа пользователя: {}", userName);
+
+        return userRepository.findByEmail(userName)
+                .map(user -> {
+                    boolean matches = encoder.matches(password, user.getPassword());
+                    if (!matches) {
+                        log.warn("Неверный пароль для пользователя: {}", userName);
+                        throw new BadCredentialsException("Неверный пароль");
+                    }
+                    log.info("Успешный вход пользователя: {}", userName);
+                    return true;
+                })
+                .orElseThrow(() -> new BadCredentialsException("Пользователь не найден: " + userName));
     }
 
     @Override
+    @Transactional
     public boolean register(Register register) {
-        if (manager.userExists(register.getUsername())) {
-            return false;
+        log.info("Регистрация нового пользователя: {}", register.getUsername());
+
+        // Проверяем, существует ли пользователь
+        if (userRepository.findByEmail(register.getUsername()).isPresent()) {
+            log.warn("Пользователь уже существует: {}", register.getUsername());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Пользователь уже существует");
         }
-        manager.createUser(
-                User.builder()
-                        .passwordEncoder(this.encoder::encode)
-                        .password(register.getPassword())
-                        .username(register.getUsername())
-                        .roles(register.getRole().name())
-                        .build());
+
+        // Создаем сущность пользователя через маппер
+        UserEntity userEntity = userMapper.toEntity(register);
+        userEntity.setPassword(encoder.encode(register.getPassword()));
+
+        // Сохраняем в БД
+        userRepository.save(userEntity);
+
+        log.info("Пользователь успешно зарегистрирован: {}", register.getUsername());
         return true;
     }
-
 }
