@@ -183,7 +183,8 @@ public class UserServiceImpl implements UserService {
             String fileName = userId + "_" + UUID.randomUUID() + extension;
             Path filePath = uploadDir.resolve(fileName);
 
-            Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            //Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            image.transferTo(filePath);
 
             log.info("Аватар сохранен: {}", filePath.toAbsolutePath());
 
@@ -212,5 +213,31 @@ public class UserServiceImpl implements UserService {
             return ".jpg";
         }
         return fileName.substring(fileName.lastIndexOf("."));
+    }
+
+    public byte[] getAvatar(Integer userId) {
+        log.info("Получение аватара пользователя с id: {}", userId);
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден: " + userId));
+
+        if (user.getImagePath() == null || user.getImagePath().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Аватар не найден");
+        }
+
+        try {
+            String fileName = user.getImagePath().substring(user.getImagePath().lastIndexOf("/") + 1);
+            Path filePath = Paths.get(avatarsPath, fileName);
+
+            if (!Files.exists(filePath)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Файл аватара не найден");
+            }
+
+            return Files.readAllBytes(filePath);
+
+        } catch (IOException e) {
+            log.error("Ошибка при чтении аватара", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка при чтении аватара");
+        }
     }
 }

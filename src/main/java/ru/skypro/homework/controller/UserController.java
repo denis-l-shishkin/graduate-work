@@ -3,6 +3,7 @@ package ru.skypro.homework.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -50,5 +51,12 @@ public class UserController {
 
         userService.updateAvatar(image, authentication);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(value = "/{id}/image", produces = {MediaType.IMAGE_JPEG_VALUE})
+    public ResponseEntity<byte[]> getUserImage(@PathVariable Integer id) {
+        log.info("Запрос на получение аватара пользователя с id: {}", id);
+        byte[] image = userService.getAvatar(id);
+        return ResponseEntity.ok(image);
     }
 }

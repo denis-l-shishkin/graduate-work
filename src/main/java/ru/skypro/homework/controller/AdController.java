@@ -3,6 +3,7 @@ package ru.skypro.homework.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -74,5 +75,12 @@ public class AdController {
         log.info("Запрос на обновление изображения объявления с id: {}", id);
         adService.updateAdImage(id, image);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(value = "/{id}/image", produces = {MediaType.IMAGE_JPEG_VALUE})
+    public ResponseEntity<byte[]> getAdImage(@PathVariable Integer id) {
+        log.info("Запрос на получение изображения объявления с id: {}", id);
+        byte[] image = adService.getAdImage(id);
+        return ResponseEntity.ok(image);
     }
 }

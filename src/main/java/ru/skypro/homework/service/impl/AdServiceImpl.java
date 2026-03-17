@@ -161,7 +161,8 @@ public class AdServiceImpl implements AdService {
 
             Path filePath = uploadDir.resolve(fileName);
 
-            Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            //Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            image.transferTo(filePath);
 
             log.info("Изображение объявления сохранено: {}", filePath.toAbsolutePath());
 
@@ -169,7 +170,7 @@ public class AdServiceImpl implements AdService {
 
         } catch (IOException e) {
             log.error("Ошибка при сохранении изображения объявления", e);
-            throw new ResponseStatusException( // ✅ ИСПРАВИТЬ
+            throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка при сохранении изображения", e);
         }
     }
@@ -191,6 +192,32 @@ public class AdServiceImpl implements AdService {
             return ".jpg";
         }
         return fileName.substring(fileName.lastIndexOf("."));
+    }
+
+    public byte[] getAdImage(Integer adId) {
+        log.info("Получение изображения объявления с id: {}", adId);
+
+        AdEntity ad = adRepository.findById(adId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Объявление не найдено: " + adId));
+
+        if (ad.getImagePath() == null || ad.getImagePath().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Изображение не найдено");
+        }
+
+        try {
+            String fileName = ad.getImagePath().substring(ad.getImagePath().lastIndexOf("/") + 1);
+            Path filePath = Paths.get(adsPath, fileName);
+
+            if (!Files.exists(filePath)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Файл изображения не найден");
+            }
+
+            return Files.readAllBytes(filePath);
+
+        } catch (IOException e) {
+            log.error("Ошибка при чтении изображения", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка при чтении изображения");
+        }
     }
 
     @Override

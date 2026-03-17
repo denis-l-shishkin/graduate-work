@@ -26,14 +26,7 @@ public class AdMapper {
         dto.setTitle(entity.getTitle());
 
         if (entity.getImagePath() != null && !entity.getImagePath().isEmpty()) {
-            String imagePath = entity.getImagePath();
-
-            if (imagePath.startsWith("/ad-images/")) {
-                dto.setImage(imagePath);
-            } else {
-                String fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
-                dto.setImage("/ad-images/" + fileName);
-            }
+            dto.setImage("/ads/" + entity.getPk() + "/image");
         }
 
         return dto;

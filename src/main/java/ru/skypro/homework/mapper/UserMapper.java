@@ -23,13 +23,9 @@ public class UserMapper {
         dto.setRole(entity.getRole());
 
         if (entity.getImagePath() != null && !entity.getImagePath().isEmpty()) {
-            String imagePath = entity.getImagePath();
-            if (imagePath.startsWith("/avatars/")) {
-                dto.setImage(imagePath);
-            } else {
-                String fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
-                dto.setImage("/avatars/" + fileName);
-            }
+            dto.setImage("/users/" + entity.getId() + "/image");
+        } else {
+            dto.setImage("");
         }
 
         return dto;

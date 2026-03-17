@@ -9,4 +9,5 @@ public interface UserService {
     boolean isAdmin(Authentication authentication);
     boolean isAdOwner(Authentication authentication, Integer adId);
     boolean isCommentOwner(Authentication authentication, Integer commentId);
+    byte[] getAvatar(Integer userId);
 }

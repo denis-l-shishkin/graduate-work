@@ -37,13 +37,7 @@ public class CommentMapper {
             dto.setAuthorFirstName(author.getFirstName());
 
             if (author.getImagePath() != null && !author.getImagePath().isEmpty()) {
-                String imagePath = author.getImagePath();
-                if (imagePath.startsWith("/avatars/")) {
-                    dto.setAuthorImage(imagePath);
-                } else {
-                    String fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
-                    dto.setAuthorImage("/avatars/" + fileName);
-                }
+                dto.setAuthorImage("/users/" + author.getId() + "/image");
             }
         }
 

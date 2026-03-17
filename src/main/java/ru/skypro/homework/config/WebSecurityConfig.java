@@ -7,7 +7,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -41,26 +40,33 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf()
                 .disable()
+                .cors() // Включаем CORS
+                .and()
                 .authorizeHttpRequests(
                         authorization ->
                                 authorization
+                                        // Разрешаем OPTIONS запросы для preflight
+                                        .mvcMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
                                         .mvcMatchers(AUTH_WHITELIST)
                                         .permitAll()
-                                        //Доступ у всех
+                                        // GET запросы к объявлениям доступны всем
                                         .mvcMatchers(HttpMethod.GET, "/ads", "/ads/{id}")
                                         .permitAll()
-                                        //Доступ только авторизованным
+                                        // GET запросы к картинкам доступны всем (ВАЖНО!)
+                                        .mvcMatchers(HttpMethod.GET, "/ads/*/image", "/users/*/image")
+                                        .permitAll()
+                                        // Все остальные запросы к API требуют авторизации
                                         .mvcMatchers("/ads/**", "/users/**")
                                         .authenticated()
                                         .anyRequest()
                                         .authenticated())
-                .cors()
-                .and()
                 .httpBasic(withDefaults())
                 .userDetailsService(customUserDetailsService);
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -74,10 +80,19 @@ public class WebSecurityConfig {
 
         // Разрешаем все заголовки
         configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization", "Content-Type", "Accept"));
+                "Authorization", "Content-Type", "Accept", "Origin",
+                "X-Requested-With", "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"));
+
+        // Заголовки, которые видны клиенту
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization", "Content-Type"));
 
         // Разрешаем отправку credentials (Basic Auth)
         configuration.setAllowCredentials(true);
+
+        // Максимальное время кеширования preflight запроса
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

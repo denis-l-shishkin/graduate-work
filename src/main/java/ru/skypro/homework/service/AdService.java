@@ -24,4 +24,7 @@ public interface AdService {
     void updateAdImage(Integer id, MultipartFile image);
 
     boolean existsById(Integer id);
+
+    byte[] getAdImage(Integer id);
+
 }
