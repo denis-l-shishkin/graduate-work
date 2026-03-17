@@ -49,7 +49,7 @@ public class CommentMapper {
 
         if (entities == null || entities.isEmpty()) {
             dto.setCount(0);
-            dto.setResults(List.of());  // пустой список вместо null
+            dto.setResults(List.of());
             return dto;
         }
 

@@ -3,12 +3,13 @@ package ru.skypro.homework.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import ru.skypro.homework.dto.request.CreateOrUpdateComment;
 import ru.skypro.homework.dto.response.Comment;
 import ru.skypro.homework.dto.response.Comments;
-
-import java.util.ArrayList;
+import ru.skypro.homework.service.CommentService;
 
 @Slf4j
 @CrossOrigin(value = "http://localhost:3000")
@@ -17,54 +18,39 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class CommentController {
 
+    private final CommentService commentService;
+
     @GetMapping("/{id}/comments")
     public ResponseEntity<Comments> getComments(@PathVariable Integer id) {
-        log.info("Запрос на получение комментариев для объявления");
-        // Код получения комментариев
-        Comments comments = new Comments();
-        comments.setCount(0);
-        comments.setResults(new ArrayList<>());
-        return ResponseEntity.ok(comments);
-        //return ResponseEntity.ok(new Comments());
+        log.info("Запрос на получение комментариев для объявления с id: {}", id);
+        return ResponseEntity.ok(commentService.getCommentsByAdId(id));
     }
 
     @PostMapping("/{id}/comments")
-    public ResponseEntity<Comment> addComment(
-            @PathVariable Integer id, @RequestBody CreateOrUpdateComment createOrUpdateComment) {
-        log.info("Запрос на добавление комментария к объявлению");
-        // Код добавления комментария
-        Comment comment = new Comment();
-        comment.setPk(1);
-        comment.setAuthor(1);
-        comment.setAuthorFirstName("Иван");
-        comment.setAuthorImage("/users/me/image");
-        comment.setCreatedAt(System.currentTimeMillis());
-        comment.setText(createOrUpdateComment.getText());
-        return ResponseEntity.ok(comment);
-        //return ResponseEntity.ok(new Comment());
+    public ResponseEntity<Comment> addComment(@PathVariable Integer id,
+                                              @RequestBody CreateOrUpdateComment comment,
+                                              Authentication authentication) {
+        log.info("Запрос на добавление комментария к объявлению с id: {} от пользователя: {}", id, authentication.getName());
+        Comment createdComment = commentService.createComment(id, comment, authentication);
+        return ResponseEntity.ok(createdComment);
     }
 
     @DeleteMapping("/{adId}/comments/{commentId}")
-    public ResponseEntity<?> deleteComment(
-            @PathVariable Integer adId, @PathVariable Integer commentId) {
-        log.info("Запрос на удаление комментария");
-        // Код удаления комментария
+    @PreAuthorize("@securityUtils.isCommentOwnerOrAdmin(authentication, #commentId)")
+    public ResponseEntity<?> deleteComment(@PathVariable Integer adId,
+                                           @PathVariable Integer commentId) {
+        log.info("Запрос на удаление комментария {} у объявления {}", commentId, adId);
+        commentService.deleteComment(commentId);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{adId}/comments/{commentId}")
-    public ResponseEntity<Comment> updateComment(
-            @PathVariable Integer adId, @PathVariable Integer commentId, @RequestBody CreateOrUpdateComment createOrUpdateComment) {
-        log.info("Запрос на обновление комментария");
-        // Код обновления комментария
-        Comment comment = new Comment();
-        comment.setPk(commentId);
-        comment.setAuthor(1);
-        comment.setAuthorFirstName("Иван");
-        comment.setAuthorImage("/users/me/image");
-        comment.setCreatedAt(System.currentTimeMillis());
-        comment.setText(createOrUpdateComment.getText());
-        return ResponseEntity.ok(comment);
-        //return ResponseEntity.ok(new Comment());
+    @PreAuthorize("@securityUtils.isCommentOwnerOrAdmin(authentication, #commentId)")
+    public ResponseEntity<Comment> updateComment(@PathVariable Integer adId,
+                                                 @PathVariable Integer commentId,
+                                                 @RequestBody CreateOrUpdateComment comment) {
+        log.info("Запрос на обновление комментария {} у объявления {}", commentId, adId);
+        Comment updatedComment = commentService.updateComment(commentId, comment);
+        return ResponseEntity.ok(updatedComment);
     }
 }
