@@ -2,8 +2,10 @@ package ru.skypro.homework.utils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 import ru.skypro.homework.entity.AdEntity;
 import ru.skypro.homework.entity.CommentEntity;
 import ru.skypro.homework.entity.UserEntity;
@@ -20,48 +22,56 @@ public class SecurityUtils {
     private final AdRepository adRepository;
     private final CommentRepository commentRepository;
 
+    public boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    public UserEntity getCurrentUser(Authentication authentication) {
+        if (authentication == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Пользователь не авторизован");
+        }
+
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Пользователь не найден: " + email));
+    }
+
     public boolean isAdOwnerOrAdmin(Authentication authentication, Integer adId) {
         if (authentication == null || adId == null) {
             log.warn("Проверка прав доступа: authentication или adId равен null");
             return false;
         }
 
-        String email = authentication.getName();
-        log.info("Проверка прав на объявление {} для пользователя {}", adId, email);
-
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-        if (isAdmin) {
-            log.info("Пользователь {} является администратором, доступ разрешен", email);
+        if (isAdmin(authentication)) {
+            log.info("Администратор имеет доступ к объявлению {}", adId);
             return true;
         }
 
-        UserEntity user = userRepository.findByEmail(email)
-                .orElse(null);
+        try {
+            UserEntity user = getCurrentUser(authentication);
 
-        if (user == null) {
-            log.warn("Пользователь {} не найден в БД", email);
+            AdEntity ad = adRepository.findById(adId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Объявление не найдено: " + adId));
+
+            boolean isOwner = ad.getAuthor().getId().equals(user.getId());
+
+            if (isOwner) {
+                log.info("Пользователь {} является владельцем объявления {}", user.getEmail(), adId);
+            } else {
+                log.warn("Пользователь {} НЕ является владельцем объявления {}", user.getEmail(), adId);
+            }
+
+            return isOwner;
+
+        } catch (ResponseStatusException e) {
+            log.error("Ошибка при проверке прав на объявление: {}", e.getMessage());
             return false;
         }
-
-        AdEntity ad = adRepository.findById(adId)
-                .orElse(null);
-
-        if (ad == null) {
-            log.warn("Объявление с id {} не найдено", adId);
-            return false;
-        }
-
-        boolean isOwner = ad.getAuthor().getId().equals(user.getId());
-
-        if (isOwner) {
-            log.info("Пользователь {} является владельцем объявления {}", email, adId);
-        } else {
-            log.warn("Пользователь {} НЕ является владельцем объявления {}", email, adId);
-        }
-
-        return isOwner;
     }
 
     public boolean isCommentOwnerOrAdmin(Authentication authentication, Integer commentId) {
@@ -70,41 +80,65 @@ public class SecurityUtils {
             return false;
         }
 
-        String email = authentication.getName();
-        log.info("Проверка прав на комментарий {} для пользователя {}", commentId, email);
-
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-        if (isAdmin) {
-            log.info("Пользователь {} является администратором, доступ разрешен", email);
+        if (isAdmin(authentication)) {
+            log.info("Администратор имеет доступ к комментарию {}", commentId);
             return true;
         }
 
-        UserEntity user = userRepository.findByEmail(email)
-                .orElse(null);
+        try {
+            UserEntity user = getCurrentUser(authentication);
 
-        if (user == null) {
-            log.warn("Пользователь {} не найден в БД", email);
+            CommentEntity comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Комментарий не найден: " + commentId));
+
+            boolean isOwner = comment.getAuthor().getId().equals(user.getId());
+
+            if (isOwner) {
+                log.info("Пользователь {} является владельцем комментария {}", user.getEmail(), commentId);
+            } else {
+                log.warn("Пользователь {} НЕ является владельцем комментария {}", user.getEmail(), commentId);
+            }
+
+            return isOwner;
+
+        } catch (ResponseStatusException e) {
+            log.error("Ошибка при проверке прав на комментарий: {}", e.getMessage());
             return false;
         }
+    }
 
-        CommentEntity comment = commentRepository.findById(commentId)
-                .orElse(null);
+    public boolean isAdOwner(Authentication authentication, Integer adId) {
+        if (authentication == null || adId == null) return false;
 
-        if (comment == null) {
-            log.warn("Комментарий с id {} не найден", commentId);
+        try {
+            UserEntity user = getCurrentUser(authentication);
+
+            AdEntity ad = adRepository.findById(adId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Объявление не найдено: " + adId));
+
+            return ad.getAuthor().getId().equals(user.getId());
+
+        } catch (ResponseStatusException e) {
             return false;
         }
+    }
 
-        boolean isOwner = comment.getAuthor().getId().equals(user.getId());
+    public boolean isCommentOwner(Authentication authentication, Integer commentId) {
+        if (authentication == null || commentId == null) return false;
 
-        if (isOwner) {
-            log.info("Пользователь {} является владельцем комментария {}", email, commentId);
-        } else {
-            log.warn("Пользователь {} НЕ является владельцем комментария {}", email, commentId);
+        try {
+            UserEntity user = getCurrentUser(authentication);
+
+            CommentEntity comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Комментарий не найден: " + commentId));
+
+            return comment.getAuthor().getId().equals(user.getId());
+
+        } catch (ResponseStatusException e) {
+            return false;
         }
-
-        return isOwner;
     }
 }

@@ -22,13 +22,7 @@ import ru.skypro.homework.repository.UserRepository;
 import ru.skypro.homework.service.AdService;
 import ru.skypro.homework.service.UserService;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +35,7 @@ public class AdServiceImpl implements AdService {
     private final UserRepository userRepository;
     private final AdMapper adMapper;
     private final UserService userService;
+    private final ImageService imageService;
 
     @Value("${upload.ads.path}")
     private String adsPath;
@@ -64,7 +59,6 @@ public class AdServiceImpl implements AdService {
     public Ad createAd(CreateOrUpdateAd properties, MultipartFile image, Authentication authentication) {
         log.info("Создание нового объявления пользователем: {}", authentication.getName());
 
-        // Проверка на наличие изображения
         if (image == null || image.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Изображение обязательно");
         }
@@ -73,11 +67,10 @@ public class AdServiceImpl implements AdService {
         AdEntity ad = adMapper.toEntity(properties, author);
         AdEntity savedAd = adRepository.save(ad);
 
-        String imagePath = saveAdImage(savedAd.getPk(), image);
-        savedAd.setImagePath(imagePath);
+        String fileName = imageService.saveImage(image, "ad", savedAd.getPk());
+        savedAd.setImagePath(fileName);
         savedAd = adRepository.save(savedAd);
 
-        log.info("Объявление создано с id: {}", savedAd.getPk());
         return adMapper.toAdDto(savedAd);
     }
 
@@ -95,7 +88,6 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    @Transactional
     public void deleteAd(Integer id) {
         log.info("Удаление объявления с id: {}", id);
 
@@ -103,11 +95,10 @@ public class AdServiceImpl implements AdService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Объявление не найдено: " + id));
 
         if (ad.getImagePath() != null) {
-            deleteAdImage(ad.getImagePath());
+            imageService.deleteImage(ad.getImagePath(), "ad");
         }
 
         adRepository.delete(ad);
-
         log.info("Объявление с id: {} удалено", id);
     }
 
@@ -133,67 +124,17 @@ public class AdServiceImpl implements AdService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Объявление не найдено: " + id));
 
         if (ad.getImagePath() != null) {
-            deleteAdImage(ad.getImagePath());
+            imageService.deleteImage(ad.getImagePath(), "ad");
         }
 
-        String imagePath = saveAdImage(id, image);
-        ad.setImagePath(imagePath);
+        String fileName = imageService.saveImage(image, "ad", id);
+        ad.setImagePath(fileName);
         adRepository.save(ad);
 
         log.info("Изображение для объявления {} обновлено", id);
     }
 
-    private String saveAdImage(Integer adId, MultipartFile image) {
-        try {
-            Path uploadDir = Paths.get(adsPath);
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-                log.info("Создана директория для изображений объявлений: {}", uploadDir.toAbsolutePath());
-            }
-
-            String contentType = image.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Можно загружать только изображения");
-            }
-
-            String extension = getFileExtension(image.getOriginalFilename());
-            String fileName = adId + "_" + UUID.randomUUID() + extension;
-
-            Path filePath = uploadDir.resolve(fileName);
-
-            //Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            image.transferTo(filePath);
-
-            log.info("Изображение объявления сохранено: {}", filePath.toAbsolutePath());
-
-            return "/ad-images/" + fileName;
-
-        } catch (IOException e) {
-            log.error("Ошибка при сохранении изображения объявления", e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка при сохранении изображения", e);
-        }
-    }
-
-    private void deleteAdImage(String imageUrl) {
-        try {
-            String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-            Path filePath = Paths.get(adsPath, fileName);
-
-            Files.deleteIfExists(filePath);
-            log.info("Изображение удалено: {}", filePath.toAbsolutePath());
-        } catch (IOException e) {
-            log.error("Ошибка при удалении изображения: {}", imageUrl, e);
-        }
-    }
-
-    private String getFileExtension(String fileName) {
-        if (fileName == null || fileName.lastIndexOf(".") == -1) {
-            return ".jpg";
-        }
-        return fileName.substring(fileName.lastIndexOf("."));
-    }
-
+    @Override
     public byte[] getAdImage(Integer adId) {
         log.info("Получение изображения объявления с id: {}", adId);
 
@@ -204,20 +145,7 @@ public class AdServiceImpl implements AdService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Изображение не найдено");
         }
 
-        try {
-            String fileName = ad.getImagePath().substring(ad.getImagePath().lastIndexOf("/") + 1);
-            Path filePath = Paths.get(adsPath, fileName);
-
-            if (!Files.exists(filePath)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Файл изображения не найден");
-            }
-
-            return Files.readAllBytes(filePath);
-
-        } catch (IOException e) {
-            log.error("Ошибка при чтении изображения", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка при чтении изображения");
-        }
+        return imageService.getImage(ad.getImagePath(), "ad");
     }
 
     @Override

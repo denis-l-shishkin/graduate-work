@@ -68,39 +68,6 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-
-        // Разрешаем запросы с фронтенда
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-
-        // Разрешаем все необходимые методы
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // Разрешаем все заголовки
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization", "Content-Type", "Accept", "Origin",
-                "X-Requested-With", "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"));
-
-        // Заголовки, которые видны клиенту
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization", "Content-Type"));
-
-        // Разрешаем отправку credentials (Basic Auth)
-        configuration.setAllowCredentials(true);
-
-        // Максимальное время кеширования preflight запроса
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-
-        return source;
-    }
-
-    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }

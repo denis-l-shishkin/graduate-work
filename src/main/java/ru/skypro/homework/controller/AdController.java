@@ -36,6 +36,7 @@ public class AdController {
         return ResponseEntity.ok(adService.getAdById(id));
     }
 
+
     @PostMapping
     public ResponseEntity<Ad> addAd(@RequestPart CreateOrUpdateAd properties,
                                     @RequestPart MultipartFile image,
